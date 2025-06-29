@@ -1,33 +1,20 @@
-#!/usr/bin/env python3
-"""
-Basic Magenta RT Demo for Local GPU Usage
-
-This script demonstrates how to use the Magenta RT model locally on GPU
-to generate music. It creates a simple demo that generates a few chunks
-of music and saves them to a WAV file.
-
-Make sure you have installed magenta_rt with GPU support:
-pip install 'git+https://github.com/magenta/magenta-realtime#egg=magenta_rt[gpu]'
-"""
-
 import time
 import numpy as np
+import sounddevice as sd
 from magenta_rt import audio, system
 
 def main():
-    print("Magenta RT Basic Demo")
+    print("Magenta RT Demo with Working Audio")
     print("=" * 40)
     
     # Configuration
-    num_seconds = 10  # Total duration of music to generate
-    style_prompt = "synthwave"  # Style for the music
-    output_file = "generated_music.wav"
+    style = "synthwave"  # You can change this
+    num_chunks = 5       # About 10 seconds of music
     
     print(f"Initializing Magenta RT (GPU) from cache...")
-    print(f"   - Duration: {num_seconds} seconds")
-    print(f"   - Style: '{style_prompt}'")
-    print(f"   - Output: {output_file}")
-    print(f"   - Using pre-cached model (should be fast!)")
+    print(f"   - Style: '{style}'")
+    print(f"   - Chunks: {num_chunks}")
+    print("   - Using pre-cached model (should be fast!)")
     
     # Initialize the model with GPU support
     # Model files are pre-downloaded during Docker build
@@ -40,54 +27,45 @@ def main():
     )
     
     init_time = time.time() - start_time
-    print(f"Model initialized in {init_time:.1f} seconds")
+    print(f"Model loaded in {init_time:.1f} seconds")
     
     # Embed the style prompt
-    print(f"Embedding style prompt: '{style_prompt}'...")
-    style = mrt.embed_style(style_prompt)
+    print(f"Embedding style: '{style}'...")
+    style_embedding = mrt.embed_style(style)
     
-    # Generate music in chunks
-    print(f"Generating {num_seconds} seconds of music...")
-    chunks = []
+    # Generate and play chunks sequentially
+    print(f"Generating and playing {num_chunks} chunks...")
     state = None
     
-    num_chunks = round(num_seconds / mrt.config.chunk_length)
-    print(f"   - Generating {num_chunks} chunks of {mrt.config.chunk_length}s each")
-    
-    generation_start = time.time()
     for i in range(num_chunks):
-        print(f"   - Chunk {i+1}/{num_chunks}...", end=" ", flush=True)
-        
+        print(f"   Generating chunk {i+1}/{num_chunks}...", end=" ", flush=True)
         chunk_start = time.time()
-        chunk, state = mrt.generate_chunk(state=state, style=style)
-        chunk_time = time.time() - chunk_start
         
-        chunks.append(chunk)
-        print(f"({chunk_time:.2f}s)")
+        # Generate chunk
+        chunk, state = mrt.generate_chunk(state=state, style=style_embedding)
+        
+        chunk_time = time.time() - chunk_start
+        max_amp = np.max(np.abs(chunk.samples)) if hasattr(chunk, 'samples') else 0.0
+        print(f"({chunk_time:.2f}s, max_amp: {max_amp:.3f})")
+        
+        # Play chunk immediately using the working method
+        if hasattr(chunk, 'samples') and len(chunk.samples) > 0:
+            print(f"   Playing chunk {i+1}...")
+            
+            # Ensure audio is float32 format (like working test.py)
+            audio_data = chunk.samples.astype(np.float32)
+            
+            # Play using the simple method that works
+            sd.play(audio_data, samplerate=mrt.sample_rate)
+            sd.wait()  # Wait for chunk to finish playing
+            
+            print(f"   Chunk {i+1} playback complete")
+        else:
+            print(f"   ERROR: Chunk {i+1} has no audio data")
     
-    generation_time = time.time() - generation_start
-    print(f"Generation complete in {generation_time:.1f} seconds")
-    
-    # Concatenate chunks with crossfading
-    print("Concatenating chunks with crossfading...")
-    generated = audio.concatenate(chunks, crossfade_time=mrt.config.crossfade_length)
-    
-    # Save to file
-    print(f"Saving to '{output_file}'...")
-    generated.write(output_file)
-    
-    # Summary
     print("=" * 40)
     print("Demo Complete!")
-    print(f"Summary:")
-    print(f"   - Model: {mrt._tag}")
-    print(f"   - Device: GPU")
-    print(f"   - Duration: {generated.num_samples / generated.sample_rate:.1f}s")
-    print(f"   - Sample rate: {generated.sample_rate} Hz")
-    print(f"   - Channels: {generated.num_channels}")
-    print(f"   - Output file: {output_file}")
-    print(f"   - Total time: {time.time() - start_time:.1f}s")
-    print(f"   - Generation speed: {generated.num_samples / generated.sample_rate / generation_time:.2f}x realtime")
+    print(f"Total time: {time.time() - start_time:.1f}s")
 
 if __name__ == "__main__":
     try:

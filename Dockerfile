@@ -1,50 +1,56 @@
-#!/usr/bin/env python3
-"""
-Model Setup Script for Magenta RT
+FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04
 
-This script pre-downloads and initializes the Magenta RT model
-so it's cached and ready for use. Run this during Docker build
-to avoid downloading models every time the container starts.
-"""
+# Avoid prompts during package installs
+ENV DEBIAN_FRONTEND=noninteractive
 
-import time
-from magenta_rt import system
+# System packages
+RUN apt update && apt install -y \
+  python3.10 python3.10-venv python3.10-dev python3.10-distutils \
+  build-essential cmake git curl wget \
+  libffi-dev libssl-dev libsndfile1 ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
 
-def setup_model():
-    print("Setting up Magenta RT model...")
-    print("=" * 50)
-    print("This will download and cache the model files")
-    print("   (This happens once during Docker build)")
-    
-    start_time = time.time()
-    
-    try:
-        # Initialize the model - this triggers all downloads
-        print("Initializing MagentaRT...")
-        mrt = system.MagentaRT(
-            tag="base",           # Use base model
-            device="gpu",         # Configure for GPU
-            skip_cache=False,     # Use cache
-            lazy=False           # Load immediately
-        )
-        
-        init_time = time.time() - start_time
-        print(f"Model setup complete in {init_time:.1f} seconds")
-        
-        # Test style embedding to ensure everything works
-        print("Testing style embedding...")
-        style = mrt.embed_style("test")
-        print("Style embedding test successful")
-        
-        print("=" * 50)
-        print("Model setup successful!")
-        print("   All model files are now cached and ready to use.")
-        
-    except Exception as e:
-        print(f"ERROR: Model setup failed: {e}")
-        import traceback
-        traceback.print_exc()
-        raise
+# Set up Python 3.10 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 
-if __name__ == "__main__":
-    setup_model() 
+# Install pip for Python 3.10
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python
+
+# Create working dir
+WORKDIR /app
+
+# Copy and install Python deps
+COPY requirements.txt .
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt
+
+# Clone Magenta Realtime and install with GPU extras
+RUN git clone https://github.com/magenta/magenta-realtime.git && \
+    sed -i "s/DEFAULT_SOURCE = 'gcp'/DEFAULT_SOURCE = 'hf'/" magenta-realtime/magenta_rt/asset.py && \
+    pip install -e magenta-realtime/[gpu]
+
+# Clean out conflicting TFs and reinstall specific nightlies
+RUN pip uninstall -y tensorflow tf-nightly tensorflow-cpu tf-nightly-cpu \
+    tensorflow-tpu tf-nightly-tpu tensorflow-hub tf-hub-nightly \
+    tensorflow-text tensorflow-text-nightly && \
+    pip install \
+      tf-nightly==2.20.0.dev20250619 \
+      tensorflow-text-nightly==2.20.0.dev20250316 \
+      tf-hub-nightly
+
+# Copy and run model setup script to pre-download models
+COPY setup_model.py .
+RUN python setup_model.py
+
+# TODO: put these eariler once I know they work
+# Install audio packages for sounddevice
+RUN apt update && apt install -y \
+    libportaudio2
+
+# Copy the test script
+COPY test.py .
+
+# Run the Python script directly
+ENTRYPOINT ["python", "test.py"]
+
+
