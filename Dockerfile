@@ -48,9 +48,9 @@ RUN apt update && apt install -y \
     libportaudio2
 
 # Copy the test script
-COPY test.py .
+COPY play_model_music.py .
 
 # Run the Python script directly
-ENTRYPOINT ["python", "test.py"]
+ENTRYPOINT ["python", "play_model_music.py"]
 
 
