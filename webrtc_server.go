@@ -339,7 +339,7 @@ func handleGenreChange(w http.ResponseWriter, r *http.Request) {
 	
 	// Parse the request body
 	var req struct {
-		Genre string `json:"genre"`
+		Genre  string `json:"genre"`
 	}
 	
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -351,7 +351,9 @@ func handleGenreChange(w http.ResponseWriter, r *http.Request) {
 	
 	// Write genre to a file that Python will monitor
 	genreFile := "/tmp/genre_request.txt"
-	if err := os.WriteFile(genreFile, []byte(req.Genre), 0644); err != nil {
+	// Always use smooth transitions
+	content := "SMOOTH:" + req.Genre
+	if err := os.WriteFile(genreFile, []byte(content), 0644); err != nil {
 		log.Printf("Error writing genre file: %v", err)
 		http.Error(w, "Failed to change genre", http.StatusInternalServerError)
 		return
@@ -762,7 +764,9 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
                 const response = await fetch('/genre', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ genre: genre })
+                    body: JSON.stringify({ 
+                        genre: genre
+                    })
                 });
                 if (!response.ok) throw new Error('Server request failed.');
                 console.log('Genre change request sent for:', genre);
@@ -771,7 +775,6 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
                 updateStatus('Failed to change genre.');
             }
         }
-
 
     </script>
 </body>
