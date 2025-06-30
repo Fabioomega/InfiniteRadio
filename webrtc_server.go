@@ -366,218 +366,323 @@ func handleGenreChange(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html>
+    w.Header().Set("Content-Type", "text/html")
+    // Using a raw string literal `` makes embedding large HTML blocks much easier
+    fmt.Fprint(w, `<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>ChobinBeats WebRTC Audio Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChobinBeats - Generative Music</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #bb86fc;
+            --primary-variant: #3700b3;
+            --secondary-color: #03dac6;
+            --text-color: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-color: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
             padding: 20px;
-            background-color: #f0f0f0;
+            background-image: radial-gradient(circle at center, rgba(187, 134, 252, 0.1), transparent 50%);
         }
+
         .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            background-color: rgba(30, 30, 30, 0.75);
             text-align: center;
         }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            font-size: 16px;
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+        }
+
+
+        #playPauseBtn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
             border: none;
-            border-radius: 5px;
+            background: linear-gradient(145deg, var(--primary-variant), var(--primary-color));
+            color: white;
+            font-size: 2rem;
             cursor: pointer;
-            display: block;
-            margin: 20px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(187, 134, 252, 0.4);
         }
-        button:hover {
-            background-color: #45a049;
+
+        #playPauseBtn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(187, 134, 252, 0.6);
         }
-        button:disabled {
-            background-color: #cccccc;
+
+        #playPauseBtn:disabled {
+            background: #555;
             cursor: not-allowed;
+            box-shadow: none;
         }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fa-spinner {
+            animation: spin 1s linear infinite;
+        }
+
         #status {
-            text-align: center;
-            margin: 20px 0;
-            font-weight: bold;
-        }
-        .success { color: #4CAF50; }
-        .error { color: #f44336; }
-        .info { color: #2196F3; }
-        audio {
-            width: 100%%;
             margin-top: 20px;
+            height: 24px;
+            font-size: 1.1rem;
+            color: var(--secondary-color);
+            font-weight: 600;
         }
+
         .genre-section {
-            margin: 30px 0;
-            padding: 20px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid var(--border-color);
         }
+
+        .genre-section h2 {
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
         .genre-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 10px;
-            margin: 15px 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
         }
+
         .genre-btn {
-            background-color: #2196F3;
-            color: white;
-            padding: 10px 15px;
-            font-size: 14px;
-            border: none;
-            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            padding: 8px 18px;
+            font-size: 0.9rem;
+            font-weight: 400;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
         }
-        .genre-btn:hover {
-            background-color: #1976D2;
-            transform: translateY(-2px);
+
+        .genre-btn:hover, .genre-btn.active {
+            background-color: var(--primary-color);
+            color: var(--bg-color);
+            border-color: var(--primary-color);
+            font-weight: 600;
         }
-        .genre-btn.active {
-            background-color: #4CAF50;
-        }
-        #currentGenre {
-            text-align: center;
-            font-size: 18px;
-            color: #4CAF50;
-            margin: 10px 0;
-        }
+
         .custom-genre-container {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #e8e8e8;
-            border-radius: 8px;
-            text-align: center;
+            margin-top: 30px;
         }
+        
+        .custom-genre-form {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
         .custom-genre-input {
-            padding: 10px;
-            font-size: 14px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            width: 200px;
-            margin-right: 10px;
+            flex-grow: 1;
+            max-width: 300px;
+            padding: 10px 15px;
+            font-size: 1rem;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 8px;
         }
+
         .custom-genre-input:focus {
             outline: none;
-            border-color: #2196F3;
+            border-color: var(--primary-color);
         }
+
         .custom-genre-btn {
-            background-color: #FF9800;
-            color: white;
+            background-color: var(--secondary-color);
+            color: var(--bg-color);
             padding: 10px 20px;
-            font-size: 14px;
+            font-size: 1rem;
+            font-weight: 600;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
         }
+        
         .custom-genre-btn:hover {
-            background-color: #F57C00;
+            opacity: 0.9;
         }
+
+        /* Hide the default audio player */
+        audio {
+            display: none;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎵 ChobinBeats WebRTC Audio Test</h1>
-        <p style="text-align: center;">Click the button below to start receiving audio from the server</p>
+        <header>
+            <h1>ChobinBeats</h1>
+            <p>Infinite Generative Music</p>
+        </header>
+
+        <main>
+            <button id="playPauseBtn"><i class="fas fa-play"></i></button>
+            <div id="status">Ready to Stream</div>
+        </main>
         
-        <button id="startButton" onclick="startConnection()">Start Audio Stream</button>
-        
-        <div id="status" class="info">Ready to connect</div>
-        
-        <audio id="remoteAudio" controls autoplay></audio>
+        <audio id="remoteAudio" autoplay></audio>
         
         <div class="genre-section">
-            <h2 style="text-align: center;">Music Genre Selection</h2>
-            <div id="currentGenre">Current Genre: synthwave</div>
+            <h2>Select a Genre</h2>
             <div class="genre-grid">
-                <button class="genre-btn" onclick="changeGenre('synthwave')">Synthwave</button>
-                <button class="genre-btn" onclick="changeGenre('disco funk')">Disco Funk</button>
-                <button class="genre-btn" onclick="changeGenre('cello')">Cello</button>
-                <button class="genre-btn" onclick="changeGenre('jazz')">Jazz</button>
-                <button class="genre-btn" onclick="changeGenre('rock')">Rock</button>
-                <button class="genre-btn" onclick="changeGenre('classical')">Classical</button>
-                <button class="genre-btn" onclick="changeGenre('ambient')">Ambient</button>
-                <button class="genre-btn" onclick="changeGenre('electronic')">Electronic</button>
-                <button class="genre-btn" onclick="changeGenre('hip hop')">Hip Hop</button>
-                <button class="genre-btn" onclick="changeGenre('reggae')">Reggae</button>
-                <button class="genre-btn" onclick="changeGenre('country')">Country</button>
-                <button class="genre-btn" onclick="changeGenre('blues')">Blues</button>
+                <button class="genre-btn active" onclick="changeGenre('synthwave', event)">Synthwave</button>
+                <button class="genre-btn" onclick="changeGenre('disco funk', event)">Disco Funk</button>
+                <button class="genre-btn" onclick="changeGenre('cello', event)">Cello</button>
+                <button class="genre-btn" onclick="changeGenre('jazz', event)">Jazz</button>
+                <button class="genre-btn" onclick="changeGenre('rock', event)">Rock</button>
+                <button class="genre-btn" onclick="changeGenre('classical', event)">Classical</button>
+                <button class="genre-btn" onclick="changeGenre('ambient', event)">Ambient</button>
+                <button class="genre-btn" onclick="changeGenre('hip hop', event)">Hip Hop</button>
             </div>
             <div class="custom-genre-container">
-                <h3 style="margin-top: 0;">Custom Genre</h3>
-                <p style="margin: 10px 0; color: #666;">Enter any custom genre or style description:</p>
-                <input type="text" id="customGenreInput" class="custom-genre-input" placeholder="e.g. 'dark techno', '80s pop'" onkeypress="handleCustomGenreKeyPress(event)">
-                <button class="custom-genre-btn" onclick="submitCustomGenre()">Apply Custom Genre</button>
+                 <div class="custom-genre-form">
+                    <input type="text" id="customGenreInput" class="custom-genre-input" placeholder="Or create your own..." onkeypress="handleCustomGenreKeyPress(event)">
+                    <button class="custom-genre-btn" onclick="submitCustomGenre()">Create</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
+        // DOM Elements
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playPauseIcon = playPauseBtn.querySelector('i');
+        const statusDiv = document.getElementById('status');
+        const remoteAudio = document.getElementById('remoteAudio');
+        
+        // WebRTC & State
         let pc;
-        let remoteAudio = document.getElementById('remoteAudio');
-        let statusDiv = document.getElementById('status');
-        let startButton = document.getElementById('startButton');
+        let isPlaying = false;
+        let isConnecting = false;
+        let currentGenre = 'synthwave';
+
+
+        playPauseBtn.onclick = () => {
+            if (isConnecting) return;
+
+            if (!pc) {
+                startConnection();
+            } else {
+                togglePlayPause();
+            }
+        };
+
+        function togglePlayPause() {
+            if (isPlaying) {
+                remoteAudio.pause();
+                isPlaying = false;
+                playPauseIcon.className = 'fas fa-play';
+                updateStatus('Paused');
+            } else {
+                remoteAudio.play();
+                isPlaying = true;
+                playPauseIcon.className = 'fas fa-pause';
+                updateStatus('Now Playing: ' + currentGenre);
+            }
+        }
 
         async function startConnection() {
+            isConnecting = true;
+            playPauseBtn.disabled = true;
+            playPauseIcon.className = 'fas fa-spinner';
+            updateStatus('Connecting...');
+
             try {
-                startButton.disabled = true;
-                updateStatus('Creating connection...', 'info');
-                
-                // Create peer connection
                 pc = new RTCPeerConnection({
                     iceServers: [{urls: 'stun:stun.l.google.com:19302'}]
                 });
 
-                // Handle incoming audio tracks
                 pc.ontrack = (event) => {
-                    console.log('Received remote track:', event.track);
-                    console.log('Track readyState:', event.track.readyState);
-                    console.log('Track muted:', event.track.muted);
                     if (event.track.kind === 'audio') {
                         remoteAudio.srcObject = event.streams[0];
-                        updateStatus('Audio stream connected! You should hear audio now.', 'success');
-                        
-                        // Debug audio levels
-                        event.track.onunmute = () => console.log('Track unmuted');
-                        event.track.onmute = () => console.log('Track muted');
-                        event.track.onended = () => console.log('Track ended');
                     }
                 };
 
-                // Monitor connection state
+                remoteAudio.onplaying = () => {
+                    isConnecting = false;
+                    isPlaying = true;
+                    playPauseBtn.disabled = false;
+                    playPauseIcon.className = 'fas fa-pause';
+                    updateStatus('Now Playing: ' + currentGenre);
+                };
+
                 pc.oniceconnectionstatechange = () => {
-                    console.log('ICE connection state:', pc.iceConnectionState);
-                    if (pc.iceConnectionState === 'connected') {
-                        updateStatus('Connection established!', 'success');
-                    } else if (pc.iceConnectionState === 'failed') {
-                        updateStatus('Connection failed', 'error');
-                        startButton.disabled = false;
+                    if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'closed') {
+                        isConnecting = false;
+                        isPlaying = false;
+                        playPauseBtn.disabled = false;
+                        playPauseIcon.className = 'fas fa-play';
+                        updateStatus('Connection lost. Please try again.');
+                        if (pc) {
+                            pc.close();
+                            pc = null;
+                        }
                     }
                 };
 
-                // Add a transceiver for audio to ensure proper SDP generation
                 pc.addTransceiver('audio', { direction: 'recvonly' });
                 
-                // Create offer
-                updateStatus('Creating offer...', 'info');
                 const offer = await pc.createOffer();
-                
                 await pc.setLocalDescription(offer);
                 
-                // Wait for ICE gathering to start
                 await new Promise(resolve => {
                     if (pc.iceGatheringState === 'complete') {
                         resolve();
@@ -592,130 +697,82 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
                     }
                 });
                 
-                // Send offer to server
-                updateStatus('Sending offer to server...', 'info');
                 const response = await fetch('/offer', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        type: pc.localDescription.type,
-                        sdp: pc.localDescription.sdp
-                    })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(pc.localDescription)
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to get answer from server');
-                }
+                if (!response.ok) throw new Error('Server failed to provide an answer.');
 
                 const answer = await response.json();
-                
-                // Set remote description
-                updateStatus('Setting remote description...', 'info');
                 await pc.setRemoteDescription(new RTCSessionDescription(answer));
                 
-                updateStatus('Waiting for connection...', 'info');
-                
             } catch (error) {
-                console.error('Error:', error);
-                updateStatus('Error: ' + error.message, 'error');
-                startButton.disabled = false;
+                console.error('Connection Error:', error);
+                updateStatus('Error: ' + error.message);
+                isConnecting = false;
+                playPauseBtn.disabled = false;
+                playPauseIcon.className = 'fas fa-play';
+                pc = null;
             }
         }
 
-        function updateStatus(message, className) {
+        function updateStatus(message) {
             statusDiv.textContent = message;
-            statusDiv.className = className;
         }
 
-        let currentGenre = 'synthwave';
-        
-        async function changeGenre(genre) {
-            try {
-                // Update UI
-                currentGenre = genre;
-                document.getElementById('currentGenre').textContent = 'Current Genre: ' + genre;
-                
-                // Update button states
-                document.querySelectorAll('.genre-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                });
+        async function changeGenre(genre, event) {
+            // Update UI for preset buttons
+            if (event) {
+                document.querySelectorAll('.genre-btn').forEach(btn => btn.classList.remove('active'));
                 event.target.classList.add('active');
-                
-                // Send POST request to server
-                const response = await fetch('/genre', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ genre: genre })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to change genre');
-                }
-                
-                const result = await response.json();
-                console.log('Genre changed:', result);
-                
-            } catch (error) {
-                console.error('Error changing genre:', error);
-                alert('Failed to change genre: ' + error.message);
             }
+            // Clear custom input if a preset is clicked
+            document.getElementById('customGenreInput').value = '';
+            
+            await sendGenreRequest(genre);
         }
-        
+
         function submitCustomGenre() {
             const input = document.getElementById('customGenreInput');
             const customGenre = input.value.trim();
-            
             if (!customGenre) {
-                alert('Please enter a custom genre');
+                alert('Please enter a custom genre.');
                 return;
             }
-            
             // Clear preset button selections
-            document.querySelectorAll('.genre-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // Use the changeGenre function but without the event target
-            changeGenreCustom(customGenre);
+            document.querySelectorAll('.genre-btn').forEach(btn => btn.classList.remove('active'));
+            sendGenreRequest(customGenre);
         }
-        
+
         function handleCustomGenreKeyPress(event) {
             if (event.key === 'Enter') {
                 submitCustomGenre();
             }
         }
-        
-        async function changeGenreCustom(genre) {
+
+        async function sendGenreRequest(genre) {
+            currentGenre = genre;
+            if (isPlaying) {
+                updateStatus('Now Playing: ' + genre);
+            }
+
             try {
-                // Update UI
-                currentGenre = genre;
-                document.getElementById('currentGenre').textContent = 'Current Genre: ' + genre;
-                
-                // Send POST request to server
                 const response = await fetch('/genre', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ genre: genre })
                 });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to change genre');
-                }
-                
-                const result = await response.json();
-                console.log('Genre changed:', result);
-                
+                if (!response.ok) throw new Error('Server request failed.');
+                console.log('Genre change request sent for:', genre);
             } catch (error) {
                 console.error('Error changing genre:', error);
-                alert('Failed to change genre: ' + error.message);
+                updateStatus('Failed to change genre.');
             }
         }
+
+
     </script>
 </body>
 </html>`)
