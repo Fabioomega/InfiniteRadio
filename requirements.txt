@@ -4,4 +4,7 @@ absl-py
 fasttext
 numpy
 sounddevice
-
+flask
+flask-cors
+requests
+av

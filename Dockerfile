@@ -47,10 +47,37 @@ RUN python setup_model.py
 RUN apt update && apt install -y \
     libportaudio2
 
-# Copy the test script
-COPY play_model_music.py .
+# Copy the Python scripts and init script
+COPY music_server.py music_server_pipe.py init_pipe.sh ./
+RUN chmod +x init_pipe.sh
 
-# Run the Python script directly
-ENTRYPOINT ["python", "play_model_music.py"]
+# Install supervisor
+RUN apt update && apt install -y supervisor && rm -rf /var/lib/apt/lists/*
 
+# Install Opus development libraries and pkg-config
+RUN apt update && apt install -y libopus-dev libopusfile-dev pkg-config && rm -rf /var/lib/apt/lists/*
+
+# Install Go for WebRTC server
+RUN curl -LO https://go.dev/dl/go1.21.10.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.21.10.linux-amd64.tar.gz && \
+    ln -s /usr/local/go/bin/go /usr/bin/go && \
+    rm go1.21.10.linux-amd64.tar.gz
+
+# Copy Go files
+COPY go.mod webrtc_server.go ./
+
+# Download Go dependencies and create go.sum
+RUN go mod download && go mod tidy
+
+# Build the Go WebRTC server
+RUN go build -o webrtc_server webrtc_server.go
+
+# Copy supervisor config
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Expose port for web server
+EXPOSE 8080
+
+# Run both processes with supervisor
+ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
 
