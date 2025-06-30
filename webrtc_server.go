@@ -41,7 +41,8 @@ func main() {
 			MimeType:    webrtc.MimeTypeOpus,
 			ClockRate:   48000,
 			Channels:    2,
-			SDPFmtpLine: "minptime=10;useinbandfec=1",
+			// More descriptive SDP line for stereo music
+			SDPFmtpLine: "minptime=10;useinbandfec=1;stereo=1;sprop-stereo=1;maxaveragebitrate=128000",
 		},
 		"audio",
 		"pion",
@@ -56,6 +57,7 @@ func main() {
 	// Set up HTTP server
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/offer", handleOffer)
+	http.HandleFunc("/genre", handleGenreChange)
 
 	fmt.Println("WebRTC server started on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -75,8 +77,11 @@ func generateAudio() {
 		log.Fatalf("Error creating Opus encoder: %v", err)
 	}
 
-	encoder.SetBitrate(96000)
-	encoder.SetComplexity(1)
+	// Increase bitrate to 128kbps for high-quality stereo
+	encoder.SetBitrate(128000)
+	// Increase complexity for better encoding quality
+	// 8 is a good balance for music
+	encoder.SetComplexity(8)
 	encoder.SetInBandFEC(true) // Forward Error Correction is great for WebRTC
 	encoder.SetPacketLossPerc(5)
 
@@ -316,6 +321,50 @@ func handleOffer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleGenreChange(w http.ResponseWriter, r *http.Request) {
+	// Handle CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// Parse the request body
+	var req struct {
+		Genre string `json:"genre"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	
+	log.Printf("Genre change requested: %s", req.Genre)
+	
+	// Write genre to a file that Python will monitor
+	genreFile := "/tmp/genre_request.txt"
+	if err := os.WriteFile(genreFile, []byte(req.Genre), 0644); err != nil {
+		log.Printf("Error writing genre file: %v", err)
+		http.Error(w, "Failed to change genre", http.StatusInternalServerError)
+		return
+	}
+	
+	// Send success response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "success",
+		"genre": req.Genre,
+	})
+}
+
 func serveHome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprintf(w, `<!DOCTYPE html>
@@ -370,6 +419,73 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
             width: 100%%;
             margin-top: 20px;
         }
+        .genre-section {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+        .genre-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .genre-btn {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 15px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .genre-btn:hover {
+            background-color: #1976D2;
+            transform: translateY(-2px);
+        }
+        .genre-btn.active {
+            background-color: #4CAF50;
+        }
+        #currentGenre {
+            text-align: center;
+            font-size: 18px;
+            color: #4CAF50;
+            margin: 10px 0;
+        }
+        .custom-genre-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8e8e8;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .custom-genre-input {
+            padding: 10px;
+            font-size: 14px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            width: 200px;
+            margin-right: 10px;
+        }
+        .custom-genre-input:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        .custom-genre-btn {
+            background-color: #FF9800;
+            color: white;
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .custom-genre-btn:hover {
+            background-color: #F57C00;
+        }
     </style>
 </head>
 <body>
@@ -382,6 +498,31 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
         <div id="status" class="info">Ready to connect</div>
         
         <audio id="remoteAudio" controls autoplay></audio>
+        
+        <div class="genre-section">
+            <h2 style="text-align: center;">Music Genre Selection</h2>
+            <div id="currentGenre">Current Genre: synthwave</div>
+            <div class="genre-grid">
+                <button class="genre-btn" onclick="changeGenre('synthwave')">Synthwave</button>
+                <button class="genre-btn" onclick="changeGenre('disco funk')">Disco Funk</button>
+                <button class="genre-btn" onclick="changeGenre('cello')">Cello</button>
+                <button class="genre-btn" onclick="changeGenre('jazz')">Jazz</button>
+                <button class="genre-btn" onclick="changeGenre('rock')">Rock</button>
+                <button class="genre-btn" onclick="changeGenre('classical')">Classical</button>
+                <button class="genre-btn" onclick="changeGenre('ambient')">Ambient</button>
+                <button class="genre-btn" onclick="changeGenre('electronic')">Electronic</button>
+                <button class="genre-btn" onclick="changeGenre('hip hop')">Hip Hop</button>
+                <button class="genre-btn" onclick="changeGenre('reggae')">Reggae</button>
+                <button class="genre-btn" onclick="changeGenre('country')">Country</button>
+                <button class="genre-btn" onclick="changeGenre('blues')">Blues</button>
+            </div>
+            <div class="custom-genre-container">
+                <h3 style="margin-top: 0;">Custom Genre</h3>
+                <p style="margin: 10px 0; color: #666;">Enter any custom genre or style description:</p>
+                <input type="text" id="customGenreInput" class="custom-genre-input" placeholder="e.g. 'dark techno', '80s pop'" onkeypress="handleCustomGenreKeyPress(event)">
+                <button class="custom-genre-btn" onclick="submitCustomGenre()">Apply Custom Genre</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -486,6 +627,94 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
         function updateStatus(message, className) {
             statusDiv.textContent = message;
             statusDiv.className = className;
+        }
+
+        let currentGenre = 'synthwave';
+        
+        async function changeGenre(genre) {
+            try {
+                // Update UI
+                currentGenre = genre;
+                document.getElementById('currentGenre').textContent = 'Current Genre: ' + genre;
+                
+                // Update button states
+                document.querySelectorAll('.genre-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                event.target.classList.add('active');
+                
+                // Send POST request to server
+                const response = await fetch('/genre', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ genre: genre })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to change genre');
+                }
+                
+                const result = await response.json();
+                console.log('Genre changed:', result);
+                
+            } catch (error) {
+                console.error('Error changing genre:', error);
+                alert('Failed to change genre: ' + error.message);
+            }
+        }
+        
+        function submitCustomGenre() {
+            const input = document.getElementById('customGenreInput');
+            const customGenre = input.value.trim();
+            
+            if (!customGenre) {
+                alert('Please enter a custom genre');
+                return;
+            }
+            
+            // Clear preset button selections
+            document.querySelectorAll('.genre-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Use the changeGenre function but without the event target
+            changeGenreCustom(customGenre);
+        }
+        
+        function handleCustomGenreKeyPress(event) {
+            if (event.key === 'Enter') {
+                submitCustomGenre();
+            }
+        }
+        
+        async function changeGenreCustom(genre) {
+            try {
+                // Update UI
+                currentGenre = genre;
+                document.getElementById('currentGenre').textContent = 'Current Genre: ' + genre;
+                
+                // Send POST request to server
+                const response = await fetch('/genre', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ genre: genre })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to change genre');
+                }
+                
+                const result = await response.json();
+                console.log('Genre changed:', result);
+                
+            } catch (error) {
+                console.error('Error changing genre:', error);
+                alert('Failed to change genre: ' + error.message);
+            }
         }
     </script>
 </body>
