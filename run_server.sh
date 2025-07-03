@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Change to the MusicContainer directory
+cd "$(dirname "$0")/MusicContainer"
+
 # Get the host's IP address (adjust the interface name if needed)
 HOST_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)192\.168\.\d+\.\d+' | head -1)
 
@@ -15,4 +18,4 @@ docker run --rm \
     --gpus all \
     --network host \
     -e HOST_IP=$HOST_IP \
-    chobinbeats
+    musicbeats
