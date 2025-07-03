@@ -27,6 +27,7 @@ type answer struct {
 }
 
 var audioTrack *webrtc.TrackLocalStaticSample
+var currentGenre string = "synthwave"
 
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
@@ -58,6 +59,7 @@ func main() {
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/offer", handleOffer)
 	http.HandleFunc("/genre", handleGenreChange)
+	http.HandleFunc("/current-genre", handleCurrentGenre)
 
 	fmt.Println("WebRTC server started on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -348,6 +350,10 @@ func handleGenreChange(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	log.Printf("Genre change requested: %s", req.Genre)
+	fmt.Printf("POST request received - New genre: %s\n", req.Genre)
+	
+	// Update the current genre
+	currentGenre = req.Genre
 	
 	// Write genre to a file that Python will monitor
 	genreFile := "/tmp/genre_request.txt"
@@ -364,6 +370,29 @@ func handleGenreChange(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "success",
 		"genre": req.Genre,
+	})
+}
+
+func handleCurrentGenre(w http.ResponseWriter, r *http.Request) {
+	// Handle CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	// Return current genre
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"genre": currentGenre,
 	})
 }
 
@@ -663,7 +692,8 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
                     isPlaying = true;
                     playPauseBtn.disabled = false;
                     playPauseIcon.className = 'fas fa-pause';
-                    updateStatus('Now Playing: ' + currentGenre);
+                    // Fetch current genre from server for accurate display
+                    fetchCurrentGenre();
                 };
 
                 pc.oniceconnectionstatechange = () => {
@@ -724,6 +754,22 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
             statusDiv.textContent = message;
         }
 
+        async function fetchCurrentGenre() {
+            try {
+                const response = await fetch('/current-genre');
+                if (response.ok) {
+                    const data = await response.json();
+                    currentGenre = data.genre;
+                    // Update status if currently playing
+                    if (isPlaying) {
+                        updateStatus('Now Playing: ' + currentGenre);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching current genre:', error);
+            }
+        }
+
         async function changeGenre(genre, event) {
             // Update UI for preset buttons
             if (event) {
@@ -755,11 +801,6 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
         }
 
         async function sendGenreRequest(genre) {
-            currentGenre = genre;
-            if (isPlaying) {
-                updateStatus('Now Playing: ' + genre);
-            }
-
             try {
                 const response = await fetch('/genre', {
                     method: 'POST',
@@ -770,11 +811,23 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
                 });
                 if (!response.ok) throw new Error('Server request failed.');
                 console.log('Genre change request sent for:', genre);
+                
+                // Update local genre and status after successful request
+                currentGenre = genre;
+                if (isPlaying) {
+                    updateStatus('Now Playing: ' + genre);
+                }
             } catch (error) {
                 console.error('Error changing genre:', error);
                 updateStatus('Failed to change genre.');
             }
         }
+
+        // Initialize - fetch current genre on page load
+        fetchCurrentGenre();
+        
+        // Periodically check for external genre changes (every 3 seconds)
+        setInterval(fetchCurrentGenre, 3000);
 
     </script>
 </body>
