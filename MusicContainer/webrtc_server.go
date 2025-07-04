@@ -27,7 +27,7 @@ type answer struct {
 }
 
 var audioTrack *webrtc.TrackLocalStaticSample
-var currentGenre string = "synthwave"
+var currentGenre string = "lofi hip hop"
 
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
@@ -404,7 +404,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChobinBeats - Generative Music</title>
+    <title>Infinite Radio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -600,7 +600,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 <body>
     <div class="container">
         <header>
-            <h1>ChobinBeats</h1>
+            <h1>Infinite Radio</h1>
             <p>Infinite Generative Music</p>
         </header>
 
@@ -614,14 +614,14 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
         <div class="genre-section">
             <h2>Select a Genre</h2>
             <div class="genre-grid">
-                <button class="genre-btn active" onclick="changeGenre('synthwave', event)">Synthwave</button>
+                <button class="genre-btn active" onclick="changeGenre('lofi hip hop', event)">Lofi Hip Hop</button>
+                <button class="genre-btn" onclick="changeGenre('synthwave', event)">Synthwave</button>
                 <button class="genre-btn" onclick="changeGenre('disco funk', event)">Disco Funk</button>
                 <button class="genre-btn" onclick="changeGenre('cello', event)">Cello</button>
                 <button class="genre-btn" onclick="changeGenre('jazz', event)">Jazz</button>
                 <button class="genre-btn" onclick="changeGenre('rock', event)">Rock</button>
                 <button class="genre-btn" onclick="changeGenre('classical', event)">Classical</button>
                 <button class="genre-btn" onclick="changeGenre('ambient', event)">Ambient</button>
-                <button class="genre-btn" onclick="changeGenre('hip hop', event)">Hip Hop</button>
             </div>
             <div class="custom-genre-container">
                  <div class="custom-genre-form">
@@ -643,7 +643,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
         let pc;
         let isPlaying = false;
         let isConnecting = false;
-        let currentGenre = 'synthwave';
+        let currentGenre = 'lofi hip hop';
 
 
         playPauseBtn.onclick = () => {
