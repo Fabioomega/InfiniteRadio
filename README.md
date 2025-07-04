@@ -1,26 +1,52 @@
-# ChobinBeats
+# Infinite Radio
 
-## Prerequisites
+Infinite Radio is a music streaming system that generates endless, unique music in real-time using Google's Magenta Realtime AI models. It features automatic genre switching based on your running applications.
 
-- Docker
-- NVIDIA GPU with CUDA support
-- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+## Quick Start
 
-## Running
+### Prerequisites
 
-1. Build the Docker image:
+- **Docker** with GPU support
+- **NVIDIA GPU** with CUDA support
+- **[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)**
+- Linux host system (tested on Ubuntu)
+
+### Installation & Usage
+
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd InfiniteRadio
+   ```
+
+2. **Build the Docker image:**
+   ```bash
+   cd MusicContainer
+   docker build -t musicbeats .
+   ```
+
+3. **Run the system:**
+   ```bash
+   ../run_server.sh
+   ```
+
+4. **Access the web interface:**
+   - Open your browser and navigate to `http://localhost:8080`
+   - Click the play button to start streaming
+   - Select genres manually or let the Process DJ handle it automatically
+
+### Running the Process DJ
+
+To enable automatic genre switching based on your running applications:
+
 ```bash
-docker build -t chobinbeats .
+# Run the Process DJ (outside the container)
+python process_dj.py localhost 8080
 ```
 
-2. Run the container:
-```bash
-./run_server.sh
-```
+The Process DJ will monitor your system and automatically change music genres based on what applications are most active.
 
-3. Access the web interface at `http://localhost:8080`
-
-## API
+## API Reference
 
 ### Change Genre
 
@@ -32,35 +58,36 @@ curl -X POST http://localhost:8080/genre \
   -d '{"genre": "jazz"}'
 ```
 
-Example preset genres:
-- synthwave
-- disco funk
-- cello
-- jazz
-- rock
-- classical
-- ambient
-- electronic
-- hip hop
-- reggae
-- country
-- blues
+### Get Current Genre
 
-**Custom genres are also supported!** You can send any text description:
+**GET** `/current-genre`
+
 ```bash
-curl -X POST http://localhost:8080/genre \
-  -H "Content-Type: application/json" \
-  -d '{"genre": "dark techno with heavy bass"}'
+curl http://localhost:8080/current-genre
 ```
 
-## Manual Docker Run
+## Manual Docker Usage
 
-If you prefer not to use the script:
+If you prefer to run without the script:
 
 ```bash
+# Get your host IP
+HOST_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)192\.168\.\d+\.\d+' | head -1)
+
+# Run the container
 docker run --rm \
   --gpus all \
   --network host \
-  -e HOST_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)192\.168\.\d+\.\d+' | head -1) \
-  chobinbeats
+  -e HOST_IP=$HOST_IP \
+  musicbeats
 ```
+
+### Building from Source
+
+The Docker build process:
+1. Installs CUDA runtime and development tools
+2. Sets up Python 3.10 with required packages
+3. Installs Magenta Realtime with GPU support
+4. Builds Go WebRTC server
+5. Pre-downloads AI models for faster startup
+
