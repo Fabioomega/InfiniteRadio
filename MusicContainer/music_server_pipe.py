@@ -42,17 +42,23 @@ class ContinuousMusicPipeWriter:
         self.style = style
         self.pipe_path = pipe_path
         self.genre_file_path = "/tmp/genre_request.txt"
-        # Queue for generated audio chunks before they are split
-        self.generation_queue = queue.Queue(maxsize=10)
+        
+        # Add a threading.Lock for safe buffer manipulation
+        self.buffer_lock = threading.Lock()
+        
+        # Queue for generated audio chunks before they are split (reduced maxsize for lower latency)
+        self.generation_queue = queue.Queue(maxsize=5)
         
         self.generator_thread = None
         self.pipe_writer_thread = None
         self.genre_monitor_thread = None
         self.stop_event = threading.Event()
         self.pipe_handle = None
-        self.genre_change_event = threading.Event()
         self.current_genre = style
         self.last_genre_check = 0
+
+        # Make the writer's buffer an instance variable so the genre monitor can clear it
+        self.buffered_audio = np.array([], dtype=np.int16)
 
         print("Magenta RT Continuous Music Pipe Writer")
         print("=" * 40)
@@ -65,6 +71,10 @@ class ContinuousMusicPipeWriter:
         
         self.sample_rate = self.mrt.sample_rate
         self.channels = self.mrt.num_channels
+        
+        # Initialize buffered_audio with correct shape
+        self.buffered_audio = self.buffered_audio.reshape(0, self.channels)
+        
         print(f"Embedding style: '{self.style}'...")
         self.style_embedding = self.mrt.embed_style(self.style)
         
@@ -110,24 +120,29 @@ class ContinuousMusicPipeWriter:
                             print(f"   Embedding new style: '{new_genre}'...")
                             try:
                                 self.style_embedding = self.mrt.embed_style(new_genre)
+                                self.current_genre = new_genre
                                 print(f"   Style embedded successfully!")
                                 
-                                # Reset the generation state for smooth transition
-                                if smooth_transition:
-                                    # Keep current state for smoother transition
-                                    print("   Smooth transition mode - keeping generation state")
-                                else:
-                                    # Reset state completely
-                                    print("   Hard transition mode - resetting generation state")
-                                    self.generation_state = None
+                                # The core logic for fast transitions
+                                print("   Clearing audio buffers for fast transition...")
+                                with self.buffer_lock:
+                                    # Empty the queue of pre-generated chunks
+                                    while not self.generation_queue.empty():
+                                        try:
+                                            self.generation_queue.get_nowait()
+                                        except queue.Empty:
+                                            break
+                                    
+                                    # Clear the writer's internal buffer
+                                    self.buffered_audio = np.array([], dtype=np.int16).reshape(0, self.channels)
+                                    
+                                    # Reset the fade processor to start the new genre cleanly
                                     self.fade.reset()
-                                
-                                self.genre_change_event.set()  # Signal that genre changed
+                                    # We keep the generation_state to ensure musical continuity
+                                print("   Buffers cleared. New genre will start shortly.")
                                 
                             except Exception as e:
                                 print(f"   Error embedding style '{new_genre}': {e}")
-                                # Keep using the old style
-                                self.current_genre = self.style  # Revert to previous
                         
                         self.last_genre_check = file_mod_time
                 
@@ -146,11 +161,6 @@ class ContinuousMusicPipeWriter:
         chunk_count = 0
         while not self.stop_event.is_set():
             try:
-                # Check if genre changed
-                if self.genre_change_event.is_set():
-                    print(f"   Now generating with genre: '{self.current_genre}'")
-                    self.genre_change_event.clear()
-                
                 chunk_count += 1
                 chunk, self.generation_state = self.mrt.generate_chunk(
                     state=self.generation_state,
@@ -158,14 +168,23 @@ class ContinuousMusicPipeWriter:
                     seed=chunk_count
                 )
                 faded_audio = self.fade(chunk.samples)
-                # Convert to 16-bit integers, which is what the Go server expects
-                audio_int16 = (faded_audio * 32767).astype(np.int16)
+                
+                # Check for hot signal (optional diagnostic)
+                max_amp = np.abs(faded_audio).max()
+                if max_amp > 1.0:
+                    print(f"WARNING: Audio signal is hot! Max amplitude: {max_amp:.4f}")
+                
+                # Convert to 16-bit integers with proper clipping to prevent crackling
+                audio_int16 = (np.clip(faded_audio, -1.0, 1.0) * 32767).astype(np.int16)
+                
+                # Put items onto the queue (queue is already thread-safe, no lock needed)
                 self.generation_queue.put(audio_int16, timeout=5)
                 
                 if chunk_count % 10 == 0:
                     print(f"Generated chunk {chunk_count} (genre: {self.current_genre})")
             except queue.Full:
                 print("WARNING: Generation queue is full. Generator is pausing.")
+                time.sleep(0.5)  # Don't spin-lock
                 continue
             except Exception as e:
                 print(f"ERROR in generator thread: {e}")
@@ -188,25 +207,32 @@ class ContinuousMusicPipeWriter:
             self.stop_event.set()
             return
 
-        buffered_audio = np.array([], dtype=np.int16).reshape(0, self.channels)
-
         while not self.stop_event.is_set():
             try:
-                # Keep a buffer of at least one frame
-                while len(buffered_audio) < PIPE_FRAME_SIZE:
-                    # Get a new large chunk if our buffer is low
+                # Check if we need more audio data
+                with self.buffer_lock:
+                    need_more_data = len(self.buffered_audio) < PIPE_FRAME_SIZE
+                
+                # Get new chunks if needed (outside the lock to avoid deadlock)
+                if need_more_data:
                     new_chunk = self.generation_queue.get(timeout=1)
-                    buffered_audio = np.vstack([buffered_audio, new_chunk])
-
-                # Get the next frame to send
-                frame_to_send = buffered_audio[:PIPE_FRAME_SIZE]
-                buffered_audio = buffered_audio[PIPE_FRAME_SIZE:]
-
-                # Write the raw bytes to the pipe
+                    with self.buffer_lock:
+                        self.buffered_audio = np.vstack([self.buffered_audio, new_chunk])
+                
+                # Get the next frame to send (with lock)
+                with self.buffer_lock:
+                    if len(self.buffered_audio) >= PIPE_FRAME_SIZE:
+                        frame_to_send = self.buffered_audio[:PIPE_FRAME_SIZE]
+                        self.buffered_audio = self.buffered_audio[PIPE_FRAME_SIZE:]
+                    else:
+                        continue  # Not enough data yet
+                
+                # Writing to the pipe can be done outside the lock
                 os.write(self.pipe_handle, frame_to_send.tobytes())
 
             except queue.Empty:
-                print("WARNING: Generation queue is empty. Writer is waiting.")
+                # This is normal during genre changes, so don't log a scary warning
+                time.sleep(0.01)
                 continue
             except Exception as e:
                 print(f"ERROR in pipe writer thread (likely pipe closed): {e}")
