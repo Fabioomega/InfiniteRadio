@@ -43,31 +43,216 @@ def is_script_process(cmdline):
 def map_process_to_genre(process_name, cmdline_str=""):
     """Maps a process name to a music genre. Now includes cmdline for better context."""
     p_name = process_name.lower().replace('.exe', '')
+    cmdline_lower = cmdline_str.lower()
+    
+    # Debug output to see what we're working with
+    print(f"   DEBUG: Processing '{process_name}' -> '{p_name}'")
 
     # More reliable mapping for Mac apps running under generic names like 'Electron'
     if 'electron' in p_name:
-        if 'visual studio code.app' in cmdline_str: p_name = 'vscode'
-        elif 'obsidian.app' in cmdline_str: p_name = 'obsidian'
-        elif 'slack.app' in cmdline_str: p_name = 'slack'
-        elif 'discord.app' in cmdline_str: p_name = 'discord'
+        if 'visual studio code.app' in cmdline_lower: p_name = 'vscode'
+        elif 'obsidian.app' in cmdline_lower: p_name = 'obsidian'
+        elif 'slack.app' in cmdline_lower: p_name = 'slack'
+        elif 'discord.app' in cmdline_lower: p_name = 'discord'
+        elif 'whatsapp.app' in cmdline_lower: p_name = 'whatsapp'
+        elif 'figma.app' in cmdline_lower: p_name = 'figma'
+        elif 'notion.app' in cmdline_lower: p_name = 'notion'
+        elif 'spotify.app' in cmdline_lower: p_name = 'spotify'
 
-    # Gaming
-    if any(game in p_name for game in ['steam', 'lutris', 'csgo', 'dota2', 'valorant', 'league of legends']):
-        return "epic orchestral"
-    # Development
-    if any(dev in p_name for dev in ['code', 'vscode', 'pycharm', 'vim', 'nvim', 'xcode', 'docker']):
-        return "lofi hip hop"
-    # Browsing
-    if any(browser in p_name for browser in ['chrome', 'firefox', 'safari', 'edge', 'brave']):
-        return "synthwave"
-    # Media & Comms
-    if any(media in p_name for media in ['spotify', 'vlc', 'apple music', 'discord', 'slack']):
+    # Gaming - check if any game keyword is in the process name
+    gaming_keywords = [
+        'steam', 'lutris', 'csgo', 'dota2', 'valorant', 'league of legends', 'fortnite',
+        'minecraft', 'overwatch', 'apex legends', 'rocket league', 'cyberpunk2077',
+        'elden ring', 'witcher3', 'gta', 'fifa', 'nba2k', 'call of duty', 'battlefield',
+        'destiny2', 'warframe', 'world of warcraft', 'final fantasy', 'assassins creed',
+        'far cry', 'tomb raider', 'skyrim', 'fallout', 'diablo', 'starcraft', 'hearthstone',
+        'wow', 'lol', 'dota', 'pubg', 'among us', 'fall guys', 'rust', 'ark', 'terraria',
+        'stardew valley', 'cities skylines', 'civilization', 'total war', 'age of empires',
+        'counter-strike', 'rainbow six', 'sea of thieves', 'no mans sky', 'subnautica',
+        'epic games', 'origin', 'uplay', 'battle.net', 'gog galaxy', 'gamepass'
+    ]
+    for keyword in gaming_keywords:
+        if keyword in p_name:
+            print(f"   DEBUG: Matched gaming keyword '{keyword}' -> epic orchestral")
+            return "epic orchestral"
+    
+    # Development & Programming
+    dev_keywords = [
+        'code', 'vscode', 'cursor', 'pycharm', 'intellij', 'webstorm', 'phpstorm', 'clion', 'datagrip',
+        'vim', 'nvim', 'neovim', 'emacs', 'sublime text', 'atom', 'brackets', 'notepad++',
+        'xcode', 'android studio', 'unity', 'unreal engine', 'godot', 'blender',
+        'docker', 'kubernetes', 'kubectl', 'helm', 'terraform', 'ansible', 'vagrant',
+        'git', 'github desktop', 'sourcetree', 'gitkraken', 'fork', 'tower',
+        'postman', 'insomnia', 'curl', 'wget', 'httpie', 'ngrok', 'localtunnel',
+        'mysql workbench', 'pgadmin', 'dbeaver', 'tableplus', 'sequel pro', 'robo 3t',
+        'redis-cli', 'mongodb compass', 'elasticsearch', 'kibana', 'grafana',
+        'jupyter', 'anaconda', 'spyder', 'rstudio', 'matlab', 'octave',
+        'node', 'npm', 'yarn', 'python', 'ruby', 'php', 'java', 'golang', 'rustc',
+        'wireshark', 'burp suite', 'metasploit', 'nmap', 'sqlmap'
+    ]
+    for keyword in dev_keywords:
+        if keyword in p_name:
+            print(f"   DEBUG: Matched development keyword '{keyword}' -> lofi hip hop")
+            return "lofi hip hop"
+    
+    # Web Browsing
+    browser_keywords = [
+        'chrome', 'firefox', 'safari', 'edge', 'brave', 'opera', 'vivaldi',
+        'chromium', 'tor browser', 'librewolf', 'waterfox', 'seamonkey',
+        'internet explorer', 'ie', 'msedge'
+    ]
+    for keyword in browser_keywords:
+        if keyword in p_name:
+            print(f"   DEBUG: Matched browser keyword '{keyword}' -> synthwave")
+            return "synthwave"
+    
+    # Media & Entertainment
+    media_keywords = [
+        'spotify', 'apple music', 'youtube music', 'pandora', 'soundcloud',
+        'vlc', 'mpv', 'quicktime', 'windows media player', 'media player classic',
+        'kodi', 'plex', 'jellyfin', 'emby', 'netflix', 'hulu', 'disney+',
+        'youtube', 'twitch', 'obs', 'streamlabs', 'xsplit', 'restream',
+        'audacity', 'garage band', 'logic pro', 'ableton live', 'fl studio',
+        'cubase', 'pro tools', 'reaper', 'reason', 'bitwig', 'studio one'
+    ]
+    if any(keyword in p_name for keyword in media_keywords):
+        print(f"   DEBUG: Matched media -> chillwave")
         return "chillwave"
-    # Terminals
-    if any(term in p_name for term in ['terminal', 'iterm', 'alacritty', 'kitty', 'powershell', 'cmd']):
+    
+    # Communication & Social
+    comm_keywords = [
+        'discord', 'slack', 'teams', 'zoom', 'skype', 'webex', 'gotomeeting',
+        'telegram', 'whatsapp', 'signal', 'messenger', 'imessage', 'facetime',
+        'thunderbird', 'outlook', 'mail', 'gmail', 'yahoo mail', 'protonmail',
+        'tweetdeck', 'twitter', 'facebook', 'instagram', 'linkedin', 'reddit',
+        'mastodon', 'matrix', 'element', 'riot', 'irc', 'hexchat', 'weechat'
+    ]
+    if any(keyword in p_name for keyword in comm_keywords):
+        print(f"   DEBUG: Matched communication -> upbeat pop")
+        return "upbeat pop"
+    
+    # Terminals & Command Line
+    terminal_keywords = [
+        'terminal', 'iterm', 'alacritty', 'kitty', 'konsole', 'gnome-terminal',
+        'xterm', 'urxvt', 'terminator', 'tilix', 'hyper', 'warp', 'tabby',
+        'powershell', 'cmd', 'bash', 'zsh', 'fish', 'tmux', 'screen',
+        'windows terminal', 'wt', 'pwsh'
+    ]
+    if any(keyword in p_name for keyword in terminal_keywords):
+        print(f"   DEBUG: Matched terminal -> chiptune")
         return "chiptune"
+    
+    # Office & Productivity
+    office_keywords = [
+        'word', 'excel', 'powerpoint', 'outlook', 'onenote', 'access', 'publisher',
+        'libreoffice', 'openoffice', 'writer', 'calc', 'impress', 'draw', 'base',
+        'google docs', 'google sheets', 'google slides', 'google drive',
+        'notion', 'obsidian', 'logseq', 'roam research', 'remnote', 'anki',
+        'evernote', 'onenote', 'bear', 'drafts', 'ulysses', 'scrivener',
+        'trello', 'asana', 'monday', 'clickup', 'todoist', 'things', 'omnifocus',
+        'calendly', 'fantastical', 'calendar', 'reminders', 'notes'
+    ]
+    if any(keyword in p_name for keyword in office_keywords):
+        print(f"   DEBUG: Matched office -> jazz")
+        return "jazz"
+    
+    # Design & Creative
+    design_keywords = [
+        'photoshop', 'illustrator', 'indesign', 'after effects', 'premiere pro',
+        'lightroom', 'bridge', 'acrobat', 'xd', 'dimension', 'animate',
+        'figma', 'sketch', 'canva', 'affinity photo', 'affinity designer',
+        'affinity publisher', 'pixelmator', 'gimp', 'inkscape', 'krita',
+        'procreate', 'clip studio paint', 'paint tool sai', 'artrage',
+        'zbrush', 'maya', '3ds max', 'cinema 4d', 'houdini', 'substance painter',
+        'substance designer', 'marmoset toolbag', 'keyshot', 'vray', 'octane'
+    ]
+    if any(keyword in p_name for keyword in design_keywords):
+        print(f"   DEBUG: Matched design -> ambient")
+        return "ambient"
+    
+    # Video & Audio Editing
+    video_keywords = [
+        'final cut pro', 'davinci resolve', 'premiere pro', 'after effects',
+        'avid media composer', 'filmora', 'camtasia', 'screenflow', 'handbrake',
+        'ffmpeg', 'vlc', 'audacity', 'logic pro', 'pro tools', 'reaper',
+        'hindenburg', 'izotope', 'waves', 'slate digital', 'universal audio'
+    ]
+    if any(keyword in p_name for keyword in video_keywords):
+        print(f"   DEBUG: Matched video editing -> cinematic")
+        return "cinematic"
+    
+    # File Management & System
+    file_mgr_keywords = [
+        'finder', 'explorer', 'nautilus', 'dolphin', 'thunar', 'pcmanfm',
+        'ranger', 'nemo', 'caja', 'spacefm', 'double commander', 'total commander',
+        'far manager', 'midnight commander', 'mc', 'ftp', 'sftp', 'rsync',
+        'filezilla', 'cyberduck', 'transmit', 'winscp', 'putty', 'mobaxterm',
+        'activity monitor', 'task manager', 'process explorer', 'htop', 'btop',
+        'system monitor', 'resource monitor', 'performance monitor'
+    ]
+    if any(keyword in p_name for keyword in file_mgr_keywords):
+        print(f"   DEBUG: Matched file management -> minimal techno")
+        return "minimal techno"
+    
+    # Security & VPN
+    security_keywords = [
+        'nordvpn', 'expressvpn', 'surfshark', 'protonvpn', 'mullvad', 'windscribe',
+        'tunnelbear', 'cyberghost', 'pia', 'hotspot shield', 'openvpn', 'wireguard',
+        'lastpass', 'bitwarden', '1password', 'keeper', 'dashlane', 'keychain',
+        'malwarebytes', 'norton', 'mcafee', 'kaspersky', 'bitdefender', 'avast',
+        'avg', 'windows defender', 'clamav', 'sophos', 'eset'
+    ]
+    if any(keyword in p_name for keyword in security_keywords):
+        print(f"   DEBUG: Matched security -> dark electronic")
+        return "dark electronic"
+    
+    # Virtual Machines & Containers
+    vm_keywords = [
+        'vmware', 'virtualbox', 'parallels', 'qemu', 'kvm', 'hyperv',
+        'docker', 'podman', 'containerd', 'kubernetes', 'k8s', 'minikube',
+        'vagrant', 'lxc', 'lxd', 'wine', 'crossover', 'playonlinux'
+    ]
+    if any(keyword in p_name for keyword in vm_keywords):
+        print(f"   DEBUG: Matched virtualization -> cyberpunk")
+        return "cyberpunk"
+    
+    # Database & Data Tools
+    db_keywords = [
+        'mysql', 'postgresql', 'sqlite', 'mongodb', 'redis', 'elasticsearch',
+        'cassandra', 'couchdb', 'influxdb', 'neo4j', 'dynamodb', 'firebase',
+        'tableau', 'power bi', 'looker', 'qlik', 'superset', 'metabase',
+        'jupyter', 'rstudio', 'spss', 'sas', 'stata', 'r-studio', 'r.exe',
+        'spark', 'hadoop', 'kafka', 'airflow', 'prefect', 'dagster'
+    ]
+    if any(keyword in p_name for keyword in db_keywords):
+        print(f"   DEBUG: Matched database -> progressive rock")
+        return "progressive rock"
+    
+    # E-commerce & Business
+    ecom_keywords = [
+        'shopify', 'magento', 'woocommerce', 'prestashop', 'opencart',
+        'salesforce', 'hubspot', 'pipedrive', 'zoho', 'freshworks',
+        'quickbooks', 'xero', 'wave', 'sage', 'tally', 'peachtree',
+        'stripe', 'paypal', 'square', 'adyen', 'klarna', 'razorpay'
+    ]
+    if any(keyword in p_name for keyword in ecom_keywords):
+        print(f"   DEBUG: Matched ecommerce -> corporate smooth jazz")
+        return "corporate smooth jazz"
+    
+    # Reading & Documentation
+    reading_keywords = [
+        'kindle', 'books', 'apple books', 'calibre', 'adobe reader', 'foxit',
+        'sumatra pdf', 'evince', 'okular', 'preview', 'zathura', 'mupdf',
+        'notion', 'obsidian', 'logseq', 'roam', 'dendron', 'foam',
+        'gitbook', 'confluence', 'wiki', 'dokuwiki', 'mediawiki',
+        'markdown', 'typora', 'mark text', 'ghostwriter', 'zettlr'
+    ]
+    if any(keyword in p_name for keyword in reading_keywords):
+        print(f"   DEBUG: Matched reading -> acoustic folk")
+        return "acoustic folk"
 
-    return "lofi hip hop" # A good, neutral default
+    print(f"   DEBUG: No match found, using default -> lofi hip hop")
+    return "lofi hip hop"  # A good, neutral default
 
 def get_process_name_map():
     """
@@ -167,8 +352,6 @@ def main(args):
 
     try:
         while True:
-            time.sleep(args.interval)
-
             # Build a map of helper processes to their parents. This is lightweight.
             process_map = get_process_name_map()
 
@@ -186,6 +369,9 @@ def main(args):
             elif not top_app and not args.quiet:
                 print("...no significant user process activity detected.")
 
+            # Sleep after checking, not before
+            time.sleep(args.interval)
+
     except KeyboardInterrupt:
         print("\n--- Top Process DJ Stopping ---")
     except Exception as e:
@@ -197,7 +383,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("ip", help="The IP address of the music server.")
     parser.add_argument("port", type=int, help="The port of the music server.")
-    parser.add_argument("--interval", type=int, default=10, help="Interval in seconds to check (default: 10).")
+    parser.add_argument("--interval", type=int, default=5, help="Interval in seconds to check (default: 10).")
     parser.add_argument("--quiet", action="store_true", help="Reduce output noise.")
 
     parsed_args = parser.parse_args()
