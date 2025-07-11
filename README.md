@@ -91,3 +91,9 @@ The Docker build process:
 4. Builds Go WebRTC server
 5. Pre-downloads AI models for faster startup
 
+Building the mac app:
+
+```
+pip install py2app jaraco.text
+python3 setup.py py2app
+```
