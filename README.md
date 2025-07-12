@@ -94,6 +94,6 @@ The Docker build process:
 Building the mac app:
 
 ```
-pip install py2app jaraco.text
+pip install py2app jaraco.text setuptools
 python3 setup.py py2app
 ```
