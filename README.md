@@ -1,6 +1,6 @@
 # Infinite Radio
 
-Infinite Radio is a music streaming system that generates endless, unique music in real-time using Google's Magenta Realtime AI models. It features automatic genre switching based on your running applications.
+Infinite Radio generates endless music that automatically changes based on your current context. It runs a local instance of the [Magenta RealTime](https://magenta.withgoogle.com/magenta-realtime) music model and feeds contextual genre selection either from the top processes running on your machine or even from live LLM analysis.
 
 ## Quick Start
 
@@ -9,7 +9,6 @@ Infinite Radio is a music streaming system that generates endless, unique music 
 - **Docker** with GPU support
 - **NVIDIA GPU** with CUDA support
 - **[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)**
-- Linux host system (tested on Ubuntu)
 
 ### Installation & Usage
 
