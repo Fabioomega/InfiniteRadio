@@ -383,7 +383,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("ip", help="The IP address of the music server.")
     parser.add_argument("port", type=int, help="The port of the music server.")
-    parser.add_argument("--interval", type=int, default=5, help="Interval in seconds to check (default: 10).")
+    parser.add_argument("--interval", type=int, default=10, help="Interval in seconds to check (default: 10).")
     parser.add_argument("--quiet", action="store_true", help="Reduce output noise.")
 
     parsed_args = parser.parse_args()

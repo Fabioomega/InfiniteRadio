@@ -252,6 +252,7 @@ class InfiniteRadioApp(rumps.App):
         self.dj_type = "process"  # "process" or "llm"
         self.model_name = "internvl3-2b-instruct"  # Default model name for LLM DJ
         self.monitor_index = 1  # Default to first monitor
+        self.interval = 10  # Default interval in seconds
         self.console_window_controller = None  # Renamed for clarity
         
         # Clean up any orphaned DJ processes from previous runs
@@ -314,6 +315,7 @@ class InfiniteRadioApp(rumps.App):
         display_dj_type = "Process DJ" if self.dj_type == "process" else "LLM DJ"
         display_model = self.model_name or "Not Set"
         display_monitor = self._get_monitor_description()
+        display_interval = f"{self.interval}s"
         
         is_configured = self.ip is not None and self.port is not None
 
@@ -344,11 +346,13 @@ class InfiniteRadioApp(rumps.App):
                     rumps.MenuItem("Configure Server", callback=self.configure_server),
                     rumps.MenuItem("Configure Model", callback=self.configure_model),
                     rumps.MenuItem("Configure Monitor", callback=self.configure_monitor) if self.dj_type == "llm" else None,
+                    rumps.MenuItem("Configure Interval", callback=self.configure_interval),
                     rumps.separator,
                     rumps.MenuItem(f"IP: {display_ip}", callback=None),
                     rumps.MenuItem(f"Port: {display_port}", callback=None),
                     rumps.MenuItem(f"Model: {display_model}", callback=None),
                     rumps.MenuItem(f"Monitor: {display_monitor}", callback=None) if self.dj_type == "llm" else None,
+                    rumps.MenuItem(f"Interval: {display_interval}", callback=None),
                 ]
             },
             rumps.separator,
@@ -400,10 +404,10 @@ class InfiniteRadioApp(rumps.App):
         """Updates the process runner configuration based on current settings."""
         if self.dj_type == "process":
             self.dj_runner.script_name = 'process_dj.py'
-            self.dj_runner.args = [self.ip, str(self.port)]
+            self.dj_runner.args = [self.ip, str(self.port), '--interval', str(self.interval)]
         elif self.dj_type == "llm":
             self.dj_runner.script_name = 'llm_dj.py'
-            self.dj_runner.args = [self.ip, str(self.port), '--model', self.model_name, '--monitor', str(self.monitor_index)]
+            self.dj_runner.args = [self.ip, str(self.port), '--model', self.model_name, '--monitor', str(self.monitor_index), '--interval', str(self.interval)]
 
     def open_ui(self, _):
         """Opens the web UI. Will only be callable if configured."""
@@ -442,6 +446,11 @@ class InfiniteRadioApp(rumps.App):
             self.dj_runner.stop()
         
         self._cleanup_console() # Clean up console on type switch
+        
+        # Set appropriate default interval for Process DJ if it's currently set to LLM DJ default
+        if self.dj_type == "llm" and self.interval == 10:
+            self.interval = 5  # Process DJ default
+        
         self.dj_type = "process"
         self.rebuild_menu()
         
@@ -457,6 +466,11 @@ class InfiniteRadioApp(rumps.App):
             self.dj_runner.stop()
         
         self._cleanup_console() # Clean up console on type switch
+        
+        # Set appropriate default interval for LLM DJ if it's currently set to Process DJ default
+        if self.dj_type == "process" and self.interval == 5:
+            self.interval = 10  # LLM DJ default
+        
         self.dj_type = "llm"
         self.rebuild_menu()
         
@@ -533,6 +547,48 @@ class InfiniteRadioApp(rumps.App):
         
         monitor_desc = self._get_monitor_description()
         rumps.notification("Monitor Updated", f"Monitor set to {monitor_desc}", "LLM DJ will capture this monitor.")
+        
+        if was_running:
+            self.toggle_dj_process(None)
+    
+    def configure_interval(self, _):
+        """Opens a dialog to let the user set the update interval."""
+        dj_type_name = "Process DJ" if self.dj_type == "process" else "LLM DJ"
+        
+        # Create description text for the window
+        description = f"Set how often {dj_type_name} checks for changes.\n\n"
+        description += f"\nCurrent: {self.interval} seconds\nEnter new interval:"
+        
+        interval_window = rumps.Window(
+            title="Update Interval",
+            message=description,
+            default_text=str(self.interval),
+            ok="Save", cancel="Cancel", dimensions=(80, 20)
+        )
+        
+        response = interval_window.run()
+        
+        if not response.clicked:
+            return
+        
+        try:
+            new_interval = int(response.text.strip())
+            if new_interval < 1:
+                raise ValueError("Interval must be at least 1 second")
+            if new_interval > 300:  # 5 minutes max
+                raise ValueError("Interval must be 300 seconds or less")
+        except ValueError as e:
+            rumps.alert("Invalid Input", f"Please enter a valid interval (1-300 seconds). {e}")
+            return
+        
+        was_running = self.dj_runner.is_running()
+        if was_running:
+            self.dj_runner.stop()
+        
+        self.interval = new_interval
+        self.rebuild_menu()
+        
+        rumps.notification("Interval Updated", f"Update interval set to {self.interval} seconds", f"{dj_type_name} will check for changes every {self.interval} seconds.")
         
         if was_running:
             self.toggle_dj_process(None)
