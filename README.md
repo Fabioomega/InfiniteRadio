@@ -39,6 +39,8 @@ For running the music model locally, you will need:
 
 ## Option 1: Running the DJ on MacOS
 
+The Mac application can start the Process DJ or connect to the LLM DJ. It lives as a tray application to easily configure and examine the music control. **Note:** When using the Mac application, you may need to provide additional permissions to allow the DJ to examine your screen to dynamically select the genre.
+
 1. **Download the latest release:**
    - Go to the releases page and download the [latest version](https://github.com/LaurieWired/InfiniteRadio/releases/download/v1.0/InfiniteRadio.zip)
    - Run the .app file and Infinite Radio will appear in your tray
@@ -47,7 +49,7 @@ For running the music model locally, you will need:
 
 3. **Select and run your DJ of choice**
    - You can run the process DJ immediately or choose the LLM DJ
-   - If selecting the LLM DJ, ensure the model server is running already in [LM Studio](https://lmstudio.ai) (See Option 3 below for an example although running the python script is not required when using the Mac app)
+   - If selecting the LLM DJ, ensure the model server is running already in [LM Studio](https://lmstudio.ai) (See *Option 3* below for an example although you may skip the python step when using the Mac app)
 
 ## Option 2: Running Process DJ with Python
 
