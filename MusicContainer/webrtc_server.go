@@ -210,14 +210,8 @@ func handleOffer(w http.ResponseWriter, r *http.Request) {
 	})
 	
 	// Set NAT1To1IPs to help with connectivity
-	// Use HOST_IP environment variable if set
-	if hostIP := os.Getenv("HOST_IP"); hostIP != "" {
-		log.Printf("Using HOST_IP: %s for ICE candidates", hostIP)
-		settingEngine.SetNAT1To1IPs([]string{hostIP}, webrtc.ICECandidateTypeHost)
-	} else {
-		// Let WebRTC figure out the IPs
-		settingEngine.SetNAT1To1IPs([]string{}, webrtc.ICECandidateTypeHost)
-	}
+	// Let WebRTC figure out the IPs
+	settingEngine.SetNAT1To1IPs([]string{}, webrtc.ICECandidateTypeHost)
 	
 	// Configure larger receive buffer for smoother playback
 	settingEngine.SetReceiveMTU(1600) // Larger MTU for better throughput
