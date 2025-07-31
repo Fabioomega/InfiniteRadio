@@ -19,7 +19,7 @@ For running the music model locally, you will need:
    ```
 
 2. **Access the web interface:**
-   - Open your browser and navigate to `http://localhost:8080`
+   - Open your browser and navigate to `http://127.0.0.1:8080` or the IP where the music container is runnning
    - Click the play button to start streaming
   
 ## Running a DJ
@@ -33,10 +33,16 @@ TODO
 The Process DJ will monitor the processes on your system and automatically change music genres based on what applications are most active.
 
 ```bash
-python process_dj.py localhost 8080 # Point this to the IP and port of the music model
+python process_dj.py 127.0.0.1 8080 # Point this to the IP and port of the music model
 ```
 
 ## Option 3: Running the LLM DJ with Python
+
+The LLM DJ analyzes the data on your screen to automatically configure the genre that best suits your activity.
+
+1. **Run the LLM in LM Studio:**
+   - Download [InternVL3](https://huggingface.co/OpenGVLab/InternVL3-2B) (or any image to text model)
+   - Start the server in LM Studio
 
 # API Reference
 
