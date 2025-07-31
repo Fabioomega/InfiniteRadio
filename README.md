@@ -1,53 +1,46 @@
 # Infinite Radio
 
-Infinite Radio generates endless music that automatically changes based on your current context. It runs a local instance of the [Magenta RealTime](https://magenta.withgoogle.com/magenta-realtime) music model and feeds contextual genre selection either from the top processes running on your machine or even from live LLM analysis.
+Infinite Radio generates endless music that automatically changes based on your current context. It combines the [Magenta RealTime](https://magenta.withgoogle.com/magenta-realtime) music model with contextual genre selection either from [InternVL3](https://huggingface.co/OpenGVLab/InternVL3-2B) or the top processes running on your machine.
 
-## Quick Start
+# Installation
 
-### Prerequisites
+## Prerequisites
 
+For running the music model locally, you will need:
 - **Docker** with GPU support
 - **NVIDIA GPU** with CUDA support
 - **[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)**
 
-### Installation & Usage
+## Music Model
 
-1. **Clone the repository:**
+1. **Run the Docker Container from [Dockerhub](https://hub.docker.com/repository/docker/lauriewired/musicbeats/general):**
    ```bash
-   git clone <repository-url>
-   cd InfiniteRadio
+   docker run --gpus all --network host lauriewired/musicbeats:latest
    ```
 
-2. **Build the Docker image:**
-   ```bash
-   cd MusicContainer
-   docker build -t musicbeats .
-   ```
-
-3. **Run the system:**
-   ```bash
-   ../run_server.sh
-   ```
-
-4. **Access the web interface:**
+2. **Access the web interface:**
    - Open your browser and navigate to `http://localhost:8080`
    - Click the play button to start streaming
-   - Select genres manually or let the Process DJ handle it automatically
+  
+## Running a DJ
 
-### Running the Process DJ
+## Option 1: Running the DJ on MacOS
 
-To enable automatic genre switching based on your running applications:
+TODO
+
+## Option 2: Running Process DJ with Python
+
+The Process DJ will monitor the processes on your system and automatically change music genres based on what applications are most active.
 
 ```bash
-# Run the Process DJ (outside the container)
-python process_dj.py localhost 8080
+python process_dj.py localhost 8080 # Point this to the IP and port of the music model
 ```
 
-The Process DJ will monitor your system and automatically change music genres based on what applications are most active.
+## Option 3: Running the LLM DJ with Python
 
-## API Reference
+# API Reference
 
-### Change Genre
+## Change Genre
 
 **POST** `/genre`
 
@@ -57,7 +50,7 @@ curl -X POST http://localhost:8080/genre \
   -d '{"genre": "jazz"}'
 ```
 
-### Get Current Genre
+## Get Current Genre
 
 **GET** `/current-genre`
 
@@ -65,32 +58,9 @@ curl -X POST http://localhost:8080/genre \
 curl http://localhost:8080/current-genre
 ```
 
-## Manual Docker Usage
+# Building
 
-If you prefer to run without the script:
-
-```bash
-# Get your host IP
-HOST_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)192\.168\.\d+\.\d+' | head -1)
-
-# Run the container
-docker run --rm \
-  --gpus all \
-  --network host \
-  -e HOST_IP=$HOST_IP \
-  musicbeats
-```
-
-### Building from Source
-
-The Docker build process:
-1. Installs CUDA runtime and development tools
-2. Sets up Python 3.10 with required packages
-3. Installs Magenta Realtime with GPU support
-4. Builds Go WebRTC server
-5. Pre-downloads AI models for faster startup
-
-Building the mac app:
+Building the Mac application:
 
 ```
 pip install py2app jaraco.text setuptools
