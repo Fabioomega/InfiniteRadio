@@ -1,3 +1,16 @@
+<div align="center">
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/LaurieWired/InfiniteRadio)](https://github.com/LaurieWired/InfiniteRadio/releases)
+[![GitHub stars](https://img.shields.io/github/stars/LaurieWired/InfiniteRadio)](https://github.com/LaurieWired/InfiniteRadio/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/LaurieWired/InfiniteRadio)](https://github.com/LaurieWired/InfiniteRadio/network/members)
+[![GitHub contributors](https://img.shields.io/github/contributors/LaurieWired/InfiniteRadio)](https://github.com/LaurieWired/InfiniteRadio/graphs/contributors)
+[![Follow @lauriewired](https://img.shields.io/twitter/follow/lauriewired?style=social)](https://twitter.com/lauriewired)
+
+![logo](images/infinite_radio.png)
+
+</div>
+
 # Infinite Radio
 
 Infinite Radio generates endless music that automatically changes based on your current context. It combines the [Magenta RealTime](https://magenta.withgoogle.com/magenta-realtime) music model with contextual genre selection either from [InternVL3](https://huggingface.co/OpenGVLab/InternVL3-2B) or the top processes running on your machine.
@@ -43,6 +56,13 @@ The LLM DJ analyzes the data on your screen to automatically configure the genre
 1. **Run the LLM in LM Studio:**
    - Download [InternVL3](https://huggingface.co/OpenGVLab/InternVL3-2B) (or any image to text model)
    - Start the server in LM Studio
+  
+<img src="images/lm_studio.png" alt="lm_studio" width="400"/>
+
+2. **Run the Python Connection:**
+   ```bash
+   python llm_dj.py 127.0.0.1 8080 # Point this to the IP and port of the music model
+   ```
 
 # API Reference
 
