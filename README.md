@@ -32,7 +32,7 @@ For running the music model locally, you will need:
    ```
 
 2. **Access the web interface:**
-   - Open your browser and navigate to `http://127.0.0.1:8080` or the IP where the music container is runnning
+   - Open your browser and navigate to `http://127.0.0.1:8080` or the IP where the music container is running
    - Click the play button to start streaming
   
 ## Running a DJ
