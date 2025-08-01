@@ -9,8 +9,10 @@ import requests
 import argparse
 import json
 import base64
+import provider as pr
 from io import BytesIO
 from PIL import Image
+from typing import Literal
 import mss
 from openai import OpenAI
 
@@ -56,37 +58,15 @@ def examine_activity(debug=False, monitor_index=0):
         print(f"ERROR: Failed to take screenshot: {e}")
         return None
 
+SYSTEM_PROMPT = "### SYSTEM\nYou are given one image.\n\n### INSTRUCTION\n1. Silently infer what the user is doing in the screenshot.\n2. Pick one 1-2-word music genre that fits the activity.\n   *Think step-by-step internally only.*\n3. Return a JSON object that conforms to the provided schema.\n   **Do not output anything else.**\n\n### RESPONSE FORMAT\n{\"music_genre\": \"<genre>\"}"
 
-def get_genre_from_llm_local(client, model_name, screenshot_b64):
+def get_genre_from_llm_local(provider: pr.Provider, model_name, screenshot_b64):
     """Use local OpenAI-compatible server to get music genre from screenshot."""
     try:
         print(f"-> Analyzing activity with local model '{model_name}'...")
         
         # Request JSON output via optimized system prompt
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "### SYSTEM\nYou are given one image.\n\n### INSTRUCTION\n1. Silently infer what the user is doing in the screenshot.\n2. Pick one 1-2-word music genre that fits the activity.\n   *Think step-by-step internally only.*\n3. Return a JSON object that conforms to the provided schema.\n   **Do not output anything else.**\n\n### RESPONSE FORMAT\n{\"music_genre\": \"<genre>\"}"
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{screenshot_b64}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            max_tokens=50,
-            temperature=0.0
-        )
-        
-        content = response.choices[0].message.content
+        content = provider.query_genre(SYSTEM_PROMPT, screenshot_b64, model_name)
         
         try:
             # First, strip any markdown code blocks that might wrap the JSON
@@ -129,15 +109,38 @@ def change_server_genre(server_ip, server_port, genre):
         print(f"   ERROR: Could not connect to the music server at {url}. Details: {e}")
         return False
 
+def model_provider_to_human(provider: Literal['lm-studio', 'ollama', 'vllm']) -> str:
+    """Converts the provider name to human readable one"""
+    if provider == 'lm-studio':
+        return 'LM Studio'
+    elif provider == 'ollama':
+        return 'Ollama'
+    elif provider == 'vllm':
+        return 'vLLM'
+    return 'Unkown Provider'
+
+def get_provider(provider_name: Literal['lm-studio', 'ollama', 'vllm']) -> pr.Provider:
+    """Returns the provider class based on a provider name"""
+    if provider_name == 'lm-studio':
+        return pr.OpenAiProvider
+    elif provider_name == 'ollama':
+        return pr.OllamaProvider
+    elif provider_name == 'vllm':
+        raise NotImplementedError('vLLM support is not implemented yet')
+    
+    print(f'The following provider {provider_name} may be supported! Defaulting to OpenAI provider!')
+    return pr.OpenAiProvider
 
 def main(args):
     """Main loop to take screenshots, get genre suggestions, and update music."""
-    lm_studio_url = "http://localhost:1234/v1"  # Only talk to local LM Studio
+    lm_studio_url = args.provider_url  # Only talk to local LM Studio
+
+    provider_name = model_provider_to_human(args.model_provider)
     
     print("--- LLM DJ Starting ---")
     print(f"Screen Activity Analysis every {args.interval} seconds")
-    print(f"LM Studio URL: {lm_studio_url}")
-    print(f"LM Studio Model: {args.model}")
+    print(f"{provider_name} URL: {lm_studio_url}")
+    print(f"{provider_name} Model: {args.model}")
     print(f"Music Server: http://{args.music_ip}:{args.music_port}/genre")
     
     # Show monitor info
@@ -154,27 +157,10 @@ def main(args):
         print(f"Monitor: Unable to detect monitor info - {e}")
     
     print("Press Ctrl+C to stop.")
-    
-    # Initialize the OpenAI client to point to your local server
-    try:
-        import ssl
-        import certifi
-        import httpx
-        
-        # Create a custom httpx client with proper SSL context
-        http_client = httpx.Client(
-            verify=False  # Since we're connecting to localhost, we can disable SSL verification
-        )
-        
-        client = OpenAI(
-            base_url=lm_studio_url, 
-            api_key="lm-studio",
-            http_client=http_client
-        )
-    except Exception as e:
-        # Fallback to basic client if SSL packages not available
-        print(f"   WARNING: SSL configuration failed ({e}), using basic client")
-        client = OpenAI(base_url=lm_studio_url, api_key="lm-studio")
+
+    provider_class = get_provider(args.model_provider)
+
+    provider = provider_class(url=lm_studio_url, api_key=args.api_key)
     
     last_genre = None
     
@@ -190,7 +176,7 @@ def main(args):
                 continue
             
             # Pass the client instance to the function
-            suggested_genre = get_genre_from_llm_local(client, args.model, screenshot_b64)
+            suggested_genre = get_genre_from_llm_local(provider, args.model, screenshot_b64)
             if not suggested_genre:
                 print("   No genre suggestion received from LLM.")
                 time.sleep(args.interval)
@@ -228,6 +214,9 @@ if __name__ == "__main__":
     parser.add_argument("--monitor", type=int, default=1, help="Monitor to capture (0=all monitors, 1=first monitor, 2=second monitor, etc.)")
     parser.add_argument("--list-monitors", action="store_true", help="List available monitors and exit")
     parser.add_argument("--debug", action="store_true", help="Show screenshot preview before sending to LLM to determine monitor")
+    parser.add_argument("--provider-url", default="http://localhost:1234/v1", help="The url for a model provider. (default: 'http://localhost:1234/v1')")
+    parser.add_argument("--model-provider", '-p', default='lm-studio', choices=['lm-studio', 'ollama', 'vllm'], help="The model provider to use. (default: 'lm-studio')")
+    parser.add_argument("--api-key", default='lm-studio', help="The api-key for the model provider. Not always a requirement depending on the provider. (default: 'lm-studio')")
     
     parsed_args = parser.parse_args()
     
